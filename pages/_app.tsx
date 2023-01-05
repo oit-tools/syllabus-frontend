@@ -1,12 +1,60 @@
 import type { AppProps } from "next/app"
 import Head from "next/head"
-import { ThemeProvider } from "@mui/material/styles"
+import { createTheme, ThemeProvider } from "@mui/material/styles"
 import CssBaseline from "@mui/material/CssBaseline"
-import theme from "../styles/theme";
 import "../styles/globals.css"
 import Header from "../src/components/header";
+import ColorModeContext from "../src/components/context";
+import { PaletteMode, useMediaQuery } from "@mui/material";
+import { useState, useEffect, useMemo } from "react";
 
 function MyApp({ Component, pageProps }: AppProps) {
+  // theme setting
+  const [mode, setMode] = useState<PaletteMode>("dark");
+  const prefersDarkMode = useMediaQuery("(prefers-color-scheme: dark)", {
+    noSsr: true
+  });
+
+  // localStorageに保存されているならそれを使い、なければシステムの設定を使う
+  useEffect(() => {
+    if (localStorage.getItem("colorMode") === "dark") {
+      setMode("dark");
+    } else if (localStorage.getItem("colorMode") === "light") {
+      setMode("light");
+    } else if ((prefersDarkMode) === true) {
+      setMode("dark");
+    } else {
+      setMode("light");
+    }
+  }, [prefersDarkMode]);
+
+  //トグルボタンでテーマを切り替える
+  const colorMode = useMemo(() => ({
+    toggleColorMode: () => {
+      setMode((prevMode: string) => (prevMode === "light" ? "dark" : "light"));
+    },
+  }
+  ), []);
+
+  //localStorageに保存
+  useEffect(() => {
+    if (mode === "dark") {
+      localStorage.setItem("colorMode", "dark");
+    } else {
+      localStorage.setItem("colorMode", "light");
+    }
+  }, [mode]);
+
+  const theme = useMemo(
+    () =>
+      createTheme({
+        palette: {
+          mode: mode,
+        },
+      }),
+    [mode],
+  );
+
   return (
     <>
       <Head>
@@ -29,11 +77,13 @@ function MyApp({ Component, pageProps }: AppProps) {
         <meta property="og:description" content="大阪工業大学非公式のシラバスアプリ" key="description" />
         <meta name="twitter:card" content="summary" />
       </Head>
-      <ThemeProvider theme={theme}>
-        <Header />
-        <CssBaseline />
-        <Component {...pageProps} />
-      </ThemeProvider>
+      <ColorModeContext.Provider value={colorMode}>
+        <ThemeProvider theme={theme}>
+          <Header />
+          <CssBaseline />
+          <Component {...pageProps} />
+        </ThemeProvider>
+      </ColorModeContext.Provider>
     </>
   )
 }
